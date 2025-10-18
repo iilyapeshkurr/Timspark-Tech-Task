@@ -1,6 +1,6 @@
 using Shared.Models;
 
-namespace CacheService.Services;
+namespace CacheService.Interfaces;
 
 public interface IIpCacheService
 {
