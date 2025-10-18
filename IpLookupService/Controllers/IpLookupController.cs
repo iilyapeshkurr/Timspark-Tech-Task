@@ -1,8 +1,6 @@
-using IpStack;
-using IpStack.Services;
 using IpLookupService.Exceptions;
 using Microsoft.AspNetCore.Mvc;
-using Shared.Models.Models;
+using Shared.Models;
 using IpLookupService.Interfaces;
 
 namespace IpLookupService.Controllers;
