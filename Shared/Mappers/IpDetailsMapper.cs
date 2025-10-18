@@ -19,7 +19,7 @@ public static class IpDetailsMapper
             CountryCode = source.CountryCode ?? string.Empty,
             CountryName = source.CountryName ?? string.Empty,
             RegionCode = source.RegionCode ?? string.Empty,
-            RegionName = source.RegionNamcde ?? string.Empty,
+            RegionName = source.RegionName ?? string.Empty,
             City = source.City ?? string.Empty,
             Zip = source.Zip ?? string.Empty,
             Latitude = source.Latitude,
