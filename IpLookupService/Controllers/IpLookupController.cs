@@ -6,7 +6,7 @@ using IpLookupService.Interfaces;
 namespace IpLookupService.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route("api/[controller]")]
 public class IpLookupController(IIpServiceWrapper _ipServiceWrapper) : ControllerBase
 {
 
