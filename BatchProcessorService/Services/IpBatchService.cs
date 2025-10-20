@@ -5,10 +5,10 @@ using Shared.Models;
 
 namespace BatchProcessorService.Services;
 
-public class IpBatchProcessorService(
+public class IpBatchService(
         IIpCacheHttpClient _cacheClient,
         IIpLookupHttpClient _lookupClient,
-        ILogger<IpBatchProcessorService> _logger) : IIpBatchService
+        ILogger<IpBatchService> _logger) : IIpBatchService
 {
     private class BatchJobState
     {
