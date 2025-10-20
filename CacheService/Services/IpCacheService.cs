@@ -1,13 +1,14 @@
 using Shared.Models;
 using CacheService.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using CacheService.Options;
 
 namespace CacheService.Services;
 
-public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> _logger) : IIpCacheService
+public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> _logger, IOptionsMonitor<CacheOptions> _cacheOptions) : IIpCacheService
 {
-    private readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(1);
-    public Task<IpDetails?> GetDetailsAsync(string ipAddress)
+    public IpDetails? GetCacheDetailsAsync(string ipAddress)
     {
         _logger.LogInformation("Attempting to retrieve details for IP: {Ip}", ipAddress);
 
@@ -16,20 +17,20 @@ public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> 
             if (_cache.TryGetValue(ipAddress, out IpDetails? details))
             {
                 _logger.LogInformation("Cache HIT for IP: {Ip}", ipAddress);
-                return Task.FromResult(details);
+                return details;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "FATAL: Failed to retrieve data from cache for IP: {Ip}.", ipAddress);
-            throw new InvalidOperationException($"Cache retrieval failed for IP: {ipAddress}.", ex);
+            _logger.LogCritical(ex, "FATAL: Failed to retrieve data from cache for IP: {Ip}.", ipAddress);
+            throw new Exception($"Cache retrieval failed for IP: {ipAddress}.", ex);
         }
 
         _logger.LogInformation("Cache MISS for IP: {Ip}", ipAddress);
-        return Task.FromResult<IpDetails?>(null);
+        return new IpDetails();
     }
 
-    public Task SetDetailsAsync(IpDetails details)
+    public void SetCacheDetailsAsync(IpDetails details)
     {
         if (details.Ip == null)
         {
@@ -40,7 +41,7 @@ public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> 
         try
         {
             var cacheEntryOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(CacheExpiration);
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(_cacheOptions.CurrentValue.CacheExpiration));
 
             _cache.Set(details.Ip, details, cacheEntryOptions);
 
@@ -48,10 +49,9 @@ public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> 
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "FATAL: Failed to set data in cache for IP: {Ip}.", details.Ip);
-            throw new InvalidOperationException($"Cache storage failed for IP: {details.Ip}.", ex);
+            _logger.LogCritical(ex, "FATAL: Failed to set data in cache for IP: {Ip}.", details.Ip);
+            throw new Exception($"Cache storage failed for IP: {details.Ip}.", ex);
         }
 
-        return Task.CompletedTask;
     }
 }

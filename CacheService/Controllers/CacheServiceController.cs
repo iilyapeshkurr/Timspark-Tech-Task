@@ -10,52 +10,29 @@ namespace IpProject.IpCacheService.Controllers;
 public sealed class IpCacheController(IIpCacheService _cacheService) : ControllerBase
 {
 
-    [HttpGet("{ipAddress}")]
+    [HttpGet("{ip-address}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IpDetails))]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetDetails(string ipAddress)
+    public IActionResult GetCacheDetails(string ipAddress)
     {
-        try
-        {
-            var details = await _cacheService.GetDetailsAsync(ipAddress);
+        var details = _cacheService.GetCacheDetailsAsync(ipAddress);
 
-            if (details != null)
-            {
-                return Ok(details);
-            }
-
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
+        if (details != null)
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Cache System Unavailable", message = ex.Message });
+            return Ok(details);
         }
+
+        return NoContent();
     }
 
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> SetDetails([FromBody] IpDetails details)
+    public IActionResult SetCacheDetails([FromBody] IpDetails details)
     {
-        if (string.IsNullOrEmpty(details.Ip))
-        {
-            return BadRequest("IP Address is required to cache details.");
-        }
-
-        try
-        {
-            await _cacheService.SetDetailsAsync(details);
-            return CreatedAtAction(nameof(GetDetails), new { ipAddress = details.Ip }, details);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { error = "Cache System Unavailable", message = ex.Message });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(ex.Message);
-        }
+        _cacheService.SetCacheDetailsAsync(details);
+        return CreatedAtAction(nameof(GetCacheDetails), new { ipAddress = details.Ip }, details);      
     }
 }

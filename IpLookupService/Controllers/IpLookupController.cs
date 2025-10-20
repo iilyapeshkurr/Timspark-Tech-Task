@@ -9,7 +9,7 @@ namespace IpLookupService.Controllers;
 public sealed class IpLookupController(IIpServiceWrapper _ipServiceWrapper) : ControllerBase
 {
 
-    [HttpGet("{ipAddress}")]
+    [HttpGet("{ip-address}")]
     [ProducesResponseType(typeof(IpDetails), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

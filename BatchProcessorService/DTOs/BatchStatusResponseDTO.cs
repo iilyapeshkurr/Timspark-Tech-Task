@@ -2,7 +2,7 @@ using Shared.Models;
 
 namespace BatchProcessorService.DTOs;
 
-public record BatchStatusResponseDTO
+public sealed record BatchStatusResponseDTO
 {
     public Guid BatchId { get; init; } 
     public string Status { get; init; }

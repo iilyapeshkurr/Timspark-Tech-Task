@@ -1,10 +1,13 @@
 using CacheService.Interfaces;
+using CacheService.Options;
 using CacheService.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((ctx, config) => config.ReadFrom.Configuration(ctx.Configuration));
+
+builder.Services.Configure<CacheOptions>(builder.Configuration.GetSection("CacheSettings"));
 
 builder.Services.AddMemoryCache();
 
