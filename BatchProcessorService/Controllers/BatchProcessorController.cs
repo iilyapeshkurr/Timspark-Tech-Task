@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BatchController(IIpBatchService _batchService) : ControllerBase
+public sealed class BatchController(IIpBatchService _batchService) : ControllerBase
 {
     [HttpPost]
     [ProducesResponseType(typeof(BatchStartResponseDTO), 202)]

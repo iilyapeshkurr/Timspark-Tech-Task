@@ -1,4 +1,3 @@
-using IpLookupService.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Models;
 using IpLookupService.Interfaces;
@@ -7,7 +6,7 @@ namespace IpLookupService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class IpLookupController(IIpServiceWrapper _ipServiceWrapper) : ControllerBase
+public sealed class IpLookupController(IIpServiceWrapper _ipServiceWrapper) : ControllerBase
 {
 
     [HttpGet("{ipAddress}")]
@@ -17,23 +16,8 @@ public class IpLookupController(IIpServiceWrapper _ipServiceWrapper) : Controlle
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetIpInfo(string ipAddress)
     {
-        try
-        {
-            var ipDetails = await _ipServiceWrapper.GetIpDetailsAsync(ipAddress);
-            return Ok(ipDetails);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
-        catch (IPServiceNotAvailableException ex)
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = ex.Message });
-        }   
+        var ipDetails = await _ipServiceWrapper.GetIpDetailsAsync(ipAddress);
+        return Ok(ipDetails);   
     }
 
 }

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace CacheService.Services;
 
-public class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> _logger) : IIpCacheService
+public sealed class IpCacheService(IMemoryCache _cache, ILogger<IpCacheService> _logger) : IIpCacheService
 {
     private readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(1);
     public Task<IpDetails?> GetDetailsAsync(string ipAddress)

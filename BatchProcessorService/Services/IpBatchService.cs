@@ -5,7 +5,7 @@ using Shared.Models;
 
 namespace BatchProcessorService.Services;
 
-public class IpBatchService(
+public sealed class IpBatchService(
         IIpCacheHttpClient _cacheClient,
         IIpLookupHttpClient _lookupClient,
         ILogger<IpBatchService> _logger) : IIpBatchService

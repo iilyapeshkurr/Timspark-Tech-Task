@@ -1,0 +1,65 @@
+using System.Net;
+using System.Text.Json;
+using IpLookupService.Exceptions;
+
+namespace IpLookupService.Middlewares;
+
+public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+{
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await next(context);
+        }
+        catch (Exception ex)
+        {
+            await HandleExceptionAsync(context, ex, logger);
+        }
+    }
+
+    private static async Task HandleExceptionAsync(HttpContext context, Exception ex, ILogger logger)
+    {
+        var statusCode = HttpStatusCode.InternalServerError;
+        string message = "An unexpected error occurred.";
+
+        switch (ex)
+        {
+            case ArgumentException:
+                statusCode = HttpStatusCode.BadRequest;
+                message = ex.Message;
+                break;
+
+            case KeyNotFoundException:
+                statusCode = HttpStatusCode.NotFound;
+                message = ex.Message;
+                break;
+
+            case IPServiceNotAvailableException:
+                statusCode = HttpStatusCode.ServiceUnavailable;
+                message = ex.Message;
+                break;
+
+            default:
+                logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+                break;
+        }
+
+        var errorResponse = new
+        {
+            status = (int)statusCode,
+            message,
+            traceId = context.TraceIdentifier
+        };
+
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = (int)statusCode;
+
+        var json = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        });
+
+        await context.Response.WriteAsync(json);
+    }
+}

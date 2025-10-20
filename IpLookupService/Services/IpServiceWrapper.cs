@@ -6,7 +6,7 @@ using Shared.Mappers;
 
 namespace IpLookupService.Services;
 
-public class IpServiceWrapper(ILogger<IpServiceWrapper> _logger, IIpStackService _ipStackService) : IIpServiceWrapper
+public sealed class IpServiceWrapper(ILogger<IpServiceWrapper> _logger, IIpStackService _ipStackService) : IIpServiceWrapper
 {
     public async Task<IpDetails> GetIpDetailsAsync(string ipAddress)
     {

@@ -7,7 +7,7 @@ namespace IpProject.IpCacheService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class IpCacheController(IIpCacheService _cacheService) : ControllerBase
+public sealed class IpCacheController(IIpCacheService _cacheService) : ControllerBase
 {
 
     [HttpGet("{ipAddress}")]

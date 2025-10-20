@@ -4,7 +4,7 @@ using Shared.Models;
 
 namespace BatchProcessorService.HttpClientWrappers;
 
-public class IpCacheHttpClient(HttpClient _client, ILogger<IpCacheHttpClient> _logger) : IIpCacheHttpClient
+public sealed class IpCacheHttpClient(HttpClient _client, ILogger<IpCacheHttpClient> _logger) : IIpCacheHttpClient
 {
     private const string CachePath = "/api/IpCache";
 

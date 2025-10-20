@@ -2,7 +2,7 @@ using System.Text.Json;
 using BatchProcessorService.Interfaces;
 using Shared.Models;
 
-public class IpLookupHttpClient(HttpClient client, ILogger<IpLookupHttpClient> logger) : IIpLookupHttpClient
+public sealed class IpLookupHttpClient(HttpClient client, ILogger<IpLookupHttpClient> logger) : IIpLookupHttpClient
 {
     private const string LookupPath = "/api/IpLookup";
 
