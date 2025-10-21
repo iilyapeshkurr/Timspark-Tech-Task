@@ -1,0 +1,63 @@
+services:
+
+  cache-service:
+    build:
+      context: .
+      dockerfile: CacheService/Dockerfile
+    container_name: timspark-cache-service
+    ports:
+      - "5067:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    networks:
+      - timspark-network
+    restart: unless-stopped
+
+  iplookup-service:
+    build:
+      context: .
+      dockerfile: IpLookupService/Dockerfile
+    container_name: timspark-iplookup-service
+    ports:
+      - "5101:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ServiceUrls__CacheServiceBaseUrl=http://cache-service:80/api/IpCache
+      - IpStack__ApiKey=your_api_key_here
+    depends_on:
+      - cache-service
+    networks:
+      - timspark-network
+    restart: unless-stopped
+
+  batch-processor-service:
+    build:
+      context: .
+      dockerfile: BatchProcessorService/Dockerfile
+    container_name: timspark-batch-processor-service
+    ports:
+      - "5082:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ServiceUrls__LookupServiceBaseUrl=http://iplookup-service:80/api/IpLookup
+    depends_on:
+      - iplookup-service
+    networks:
+      - timspark-network
+    restart: unless-stopped
+
+networks:
+  timspark-network:
+    driver: bridge
+    name: timspark-microservices-network
+
+volumes:
+  cache-logs:
+    driver: local
+  iplookup-logs:
+    driver: local
+  batch-processor-logs:
+    driver: local
