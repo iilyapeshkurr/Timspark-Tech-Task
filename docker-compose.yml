@@ -25,7 +25,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:80
       - ServiceUrls__CacheServiceBaseUrl=http://cache-service:80/api/IpCache
-      - IpStack__ApiKey=your_ipstack_api_key_here
+      - IpStack__ApiKey=a19f343e133bb6a0dbd680d0037f3efd
     depends_on:
       - cache-service
     networks:

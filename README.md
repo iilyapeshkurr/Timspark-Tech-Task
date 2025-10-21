@@ -12,9 +12,9 @@ The system follows a microservices architecture with the following components:
 
 ```
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│  Batch Processor   │───▶│   IP Lookup        │───▶│   Cache Service     │
-│   Service          │    │   Service           │    │                     │
-│   (Port 5082)      │    │   (Port 5101)       │    │   (Port 5067)       │
+│  Batch Processor    │──▶│   IP Lookup         │──▶│   Cache Service     │
+│   Service           │    │   Service           │    │                     │
+│   (Port 5082)       │    │   (Port 5101)       │    │   (Port 5067)       │
 └─────────────────────┘    └─────────────────────┘    └─────────────────────┘
                                     │                          │
                                     │                          │
@@ -69,12 +69,13 @@ The system follows a microservices architecture with the following components:
 **Purpose**: Handles asynchronous batch processing of multiple IP addresses.
 
 **Features**:
-- Asynchronous batch processing with background tasks
+- Asynchronous batch processing using Quartz.NET scheduler
 - Chunk-based processing (configurable batch size)
 - Job tracking with unique GUIDs
 - Real-time status monitoring
 - Progress tracking and result storage
 - Input validation and error handling
+- Robust background job management
 
 **Endpoints**:
 - `POST /api/Batch` - Start batch processing
@@ -237,20 +238,13 @@ curl -X POST "http://localhost:5067/api/IpCache" \
                               External IP API (IPStack)
    ```
 
-2. **Cache-First Strategy**:
-   ```
-   IpLookupService → CacheService (check cache)
-                    ↓ (if not found)
-                    External IP API (IPStack)
-                    ↓ (store result)
-                    CacheService
-   ```
-
-3. **Asynchronous Processing**:
+2. **Asynchronous Processing with Quartz.NET**:
    - Batch requests return immediately with batch ID
-   - Processing happens in background using `Task.Run`
+   - Processing happens in background using Quartz.NET scheduler
+   - Robust job management with retry capabilities
    - Status can be queried using batch ID
    - Results are stored and retrievable
+   - Job persistence and recovery capabilities
 
 ## 🛡️ Error Handling
 
@@ -270,10 +264,11 @@ curl -X POST "http://localhost:5067/api/IpCache" \
 
 ## 📈 Performance Features
 
-- **Asynchronous Processing**: Non-blocking batch operations
+- **Asynchronous Processing**: Non-blocking batch operations with Quartz.NET
 - **Chunk Processing**: Configurable batch sizes for optimal performance
 - **Memory Caching**: Fast in-memory cache with TTL
 - **Connection Pooling**: HTTP client reuse for external API calls
+- **Job Persistence**: Robust background job management with Quartz.NET
 - **Logging**: Comprehensive logging with Serilog
 - **Health Monitoring**: Service status tracking
 
@@ -327,20 +322,5 @@ curl -X POST "http://localhost:5067/api/IpCache" \
 - **FluentValidation** - Input validation
 - **Swagger/OpenAPI** - API documentation
 - **IPStack** - External IP lookup service
+- **Quartz.NET** - Background job scheduling and management
 - **MemoryCache** - In-memory caching
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is part of a technical interview assessment for ODIN Konsult AS.
-
----
-
-**Contact**: ODIN Konsult AS – Strandveien 37 – Lysaker 1366 – Norway +47 (942) 67 372

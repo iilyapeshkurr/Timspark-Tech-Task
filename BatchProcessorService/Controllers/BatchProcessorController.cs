@@ -1,5 +1,4 @@
 using BatchProcessorService.DTOs;
-using BatchProcessorService.Enums;
 using BatchProcessorService.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;

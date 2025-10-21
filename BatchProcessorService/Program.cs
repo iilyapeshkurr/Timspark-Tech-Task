@@ -1,10 +1,12 @@
 using BatchProcessorService.Interfaces;
 using BatchProcessorService.Services;
 using BatchProcessorService.HttpClientWrappers;
+using BatchProcessorService.Jobs;
 using Serilog;
 using BatchProcessorService.Middlewares;
 using FluentValidation;
 using BatchProcessorService.Validators;
+using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +29,15 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddSingleton<IValidator<IEnumerable<string>>, BatchProcessRequestValidator>();
+
+builder.Services.AddQuartz(q =>
+{
+    q.AddJob<IpBatchProcessingJob>(opts => opts
+        .WithIdentity("IpBatchProcessingJob")
+        .StoreDurably());
+});
+
+builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 builder.Services.AddEndpointsApiExplorer();
 

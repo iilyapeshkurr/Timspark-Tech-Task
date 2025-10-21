@@ -9,6 +9,6 @@ public sealed record BatchStatusResponseDTO
     public BatchJobStatus Status { get; init; }
     public int TotalIps { get; init; } 
     public int ProcessedIps { get; init; } 
-    public List<IpDetails> Results { get; init; } 
+    public List<IpDetails> Results { get; init; } = new(); 
 }
 
