@@ -43,8 +43,6 @@ public class IpBatchProcessingJob : IJob
                     jobState.Status = BatchJobStatus.Failed;
                     return;
                 }
-
-                await Task.Delay(3000, cancellationToken);
                 
                 _logger.LogInformation(
                     "Job {Id}: Processing chunk with {ChunkSize} IPs.",

@@ -11,5 +11,4 @@ public sealed class BatchJobState
     public int ProcessedIps { get; set; } = 0;
     public List<IpDetails> Results { get; init; } = new List<IpDetails>();
     public List<string> RemainingIps { get; init; } = new List<string>();
-    //ddd
 }
