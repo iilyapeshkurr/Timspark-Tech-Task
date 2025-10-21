@@ -1,54 +1,40 @@
 using BatchProcessorService.DTOs;
+using BatchProcessorService.Enums;
 using BatchProcessorService.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 [ApiController]
 [Route("api/[controller]")]
 public sealed class BatchController(IIpBatchService _batchService) : ControllerBase
 {
     [HttpPost]
-    [ProducesResponseType(typeof(BatchStartResponseDTO), 202)]
+    [SwaggerOperation(
+        Summary = "Start processing a batch of IP addresses",
+        Description = "Start proccesing a batch. Returns a batch ID to track the status."
+    )]
+    [ProducesResponseType(typeof(BatchStartResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> ProcessBatch([FromBody] BatchRequestDTO request)
+    public async Task<IActionResult> ProcessBatch([FromBody] BatchRequestDTO request, CancellationToken cancellationToken)
     {
-        try
-        {
-            if (request == null || request.IpAddresses == null || !request.IpAddresses.Any())
-            {
-                return BadRequest("Request must contain a list of IP addresses in the 'IpAddresses' field.");
-            }
+        var response = await _batchService.ProcessBatchAsync(request.IpAddresses, cancellationToken);
 
-            var response = await _batchService.ProcessBatchAsync(request.IpAddresses);
-
-            return Accepted(response);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, "An internal error occurred while initiating the batch process.");
-        }
+        return Ok(response);
     }
 
     [HttpGet("{batchId:guid}")]
-    [ProducesResponseType(typeof(BatchStatusResponseDTO), 200)]
+    [SwaggerOperation(
+        Summary = "Get batch processing status",
+        Description = "Get the status of a batch processing job using its batch ID."
+    )]
+    [ProducesResponseType(typeof(BatchStatusResponseDTO), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetBatchStatus(Guid batchId)
+    public IActionResult GetBatchStatus(Guid batchId)
     {
-        try
-        {
-            var status = await _batchService.GetBatchStatusAsync(batchId);
+        var status = _batchService.GetBatchStatus(batchId);
 
-            if (status == null)
-            {
-                return NotFound($"Batch job with ID '{batchId}' not found.");
-            }
-
-            return Ok(status);
-        }
-        catch (Exception)
-        {
-            return StatusCode(500, $"An internal error occurred while retrieving status for job '{batchId}'.");
-        }
-    }
+        return Ok(status);
+     }
 }

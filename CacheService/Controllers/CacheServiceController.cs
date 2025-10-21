@@ -1,6 +1,7 @@
 using Shared.Models;
 using CacheService.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace IpProject.IpCacheService.Controllers;
 
@@ -10,23 +11,31 @@ namespace IpProject.IpCacheService.Controllers;
 public sealed class IpCacheController(IIpCacheService _cacheService) : ControllerBase
 {
 
-    [HttpGet("{ip-address}")]
+    [HttpGet("{ipAddress}")]
+    [SwaggerOperation(
+        Summary = "Get Ip Details cache info",
+        Description = "Provides detailed information about a single Ip using its cache."
+    )]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IpDetails))]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public IActionResult GetCacheDetails(string ipAddress)
     {
         var details = _cacheService.GetCacheDetailsAsync(ipAddress);
-
+        
         if (details != null)
         {
             return Ok(details);
         }
 
-        return NoContent();
+        return NotFound();
     }
 
     [HttpPost]
+    [SwaggerOperation(
+        Summary = "Sets Ip Details info cache",
+        Description = "Sets Ip Details info cache in memory."
+    )]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]

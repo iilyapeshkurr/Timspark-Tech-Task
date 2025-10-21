@@ -1,28 +1,27 @@
 using System.Net;
 using System.Text.Json;
-using CacheService.Exceptions;
-using Microsoft.AspNetCore.Http.HttpResults;
+using BatchProcessorService.Exceptions;
 
-namespace CacheService.Middlewares;
+namespace BatchProcessorService.Middlewares;
 
-public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+public sealed class ExceptionHandlingMiddleware(RequestDelegate _next, ILogger<ExceptionHandlingMiddleware> _logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await next(context);
+            await _next(context);
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex, logger);
+            await HandleExceptionAsync(context, ex);
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception ex, ILogger logger)
+    private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        var statusCode = HttpStatusCode.InternalServerError;
-        string message = "An unexpected error occurred.";
+        HttpStatusCode statusCode;
+        string message;
 
         switch (ex)
         {
@@ -30,10 +29,15 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
                 statusCode = HttpStatusCode.BadRequest;
                 message = ex.Message;
                 break;
+            case NotFoundException:
+                statusCode = HttpStatusCode.NotFound;
+                message = ex.Message;
+                break;
 
             default:
                 statusCode = HttpStatusCode.InternalServerError;
                 message = ex.Message;
+                _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
                 break;
         }
 

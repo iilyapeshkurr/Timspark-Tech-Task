@@ -8,7 +8,7 @@ public static class ServiceExtensions
 
     public static void ConfigureIpStack(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddIpStack(configuration["IpStack"]);
+        services.AddIpStack(configuration["IpStack:ApiKey"]);
         services.AddScoped<IIpServiceWrapper, IpServiceWrapper>();
     }
 

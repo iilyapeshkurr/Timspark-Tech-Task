@@ -20,8 +20,8 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception ex, ILogger logger)
     {
-        var statusCode = HttpStatusCode.InternalServerError;
-        string message = "An unexpected error occurred.";
+        HttpStatusCode statusCode;
+        string message;
 
         switch (ex)
         {
@@ -41,6 +41,8 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
                 break;
 
             default:
+                statusCode = HttpStatusCode.InternalServerError;
+                message = ex.Message;
                 logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
                 break;
         }

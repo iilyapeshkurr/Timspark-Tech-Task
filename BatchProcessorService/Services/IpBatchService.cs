@@ -1,41 +1,38 @@
 using System.Collections.Concurrent;
+using BatchProcessorService.Constants;
 using BatchProcessorService.DTOs;
+using BatchProcessorService.Entities;
+using BatchProcessorService.Enums;
+using BatchProcessorService.Exceptions;
 using BatchProcessorService.Interfaces;
+using FluentValidation;
 using Shared.Models;
 
 namespace BatchProcessorService.Services;
 
 public sealed class IpBatchService(
-        IIpCacheHttpClient _cacheClient,
         IIpLookupHttpClient _lookupClient,
-        ILogger<IpBatchService> _logger) : IIpBatchService
+        ILogger<IpBatchService> _logger,
+        IValidator<IEnumerable<string>> _validator) : IIpBatchService
 {
-    private class BatchJobState
-    {
-        public Guid BatchId { get; init; } = Guid.NewGuid();
-        public string Status { get; set; } = "Pending";
-        public int TotalIps { get; init; }
-        public int ProcessedIps { get; set; } = 0;
-        public List<IpDetails> Results { get; init; } = new List<IpDetails>();
-        public List<string> RemainingIps { get; init; } = new List<string>();
-    }
-
     private static readonly ConcurrentDictionary<Guid, BatchJobState> _jobStatuses = new ConcurrentDictionary<Guid, BatchJobState>();
-    private const int BatchSize = 10;
 
-    public Task<BatchStartResponseDTO> ProcessBatchAsync(IEnumerable<string> ipAddresses)
+    public async Task<BatchStartResponseDTO> ProcessBatchAsync(IEnumerable<string> ipAddresses, CancellationToken cancellationToken)
     {
-        var ipList = ipAddresses.ToList();
-
-        if (!ipList.Any())
+        var validationResult = await _validator.ValidateAsync(ipAddresses, cancellationToken);
+        
+        if (!validationResult.IsValid)
         {
-            return Task.FromResult(new BatchStartResponseDTO { BatchId = Guid.Empty, Status = "Completed" });
+            _logger.LogWarning("Batch request validation failed: {Errors}", validationResult.Errors);
+            throw new BadRequestException("Invalid IP addresses in the batch request.");
         }
+
+        var ipList = ipAddresses.ToList();
 
         var jobState = new BatchJobState
         {
             TotalIps = ipList.Count,
-            Status = "Running",
+            Status = BatchJobStatus.Running,
             RemainingIps = ipList
         };
 
@@ -43,105 +40,94 @@ public sealed class IpBatchService(
 
         _logger.LogInformation("Batch job {Id} started with {Count} IPs. Running in background.", jobState.BatchId, jobState.TotalIps);
 
-        _ = Task.Run(() => RunBatchProcessor(jobState));
+        Task.Run(async () => 
+        {
+            try
+            {
+                await RunBatchProcessor(jobState, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Background batch processing failed for job {Id}", jobState.BatchId);
+                jobState.Status = BatchJobStatus.Failed;
+            }
+        }, cancellationToken);
 
-        return Task.FromResult(new BatchStartResponseDTO { BatchId = jobState.BatchId, Status = jobState.Status });
+        return new BatchStartResponseDTO { BatchId = jobState.BatchId, Status = jobState.Status };
     }
 
-    public Task<BatchStatusResponseDTO?> GetBatchStatusAsync(Guid batchId)
+    public BatchStatusResponseDTO? GetBatchStatus(Guid batchId)
     {
         if (_jobStatuses.TryGetValue(batchId, out var jobState))
         {
-            var response = new BatchStatusResponseDTO{
-                BatchId =jobState.BatchId,
+            var response = new BatchStatusResponseDTO
+            {
+                BatchId = jobState.BatchId,
                 Status = jobState.Status,
                 TotalIps = jobState.TotalIps,
                 ProcessedIps = jobState.ProcessedIps,
                 Results = jobState.Results
             };
-            return Task.FromResult<BatchStatusResponseDTO?>(response);
+            return response;
         }
 
-        return Task.FromResult<BatchStatusResponseDTO?>(null);
+        throw new BadRequestException($"Batch job with ID '{batchId}' not found.");
     }
 
-    private async Task RunBatchProcessor(BatchJobState jobState)
+    private async Task RunBatchProcessor(BatchJobState jobState, CancellationToken cancellationToken)
     {
         try
         {
             var ipList = jobState.RemainingIps;
-            int processedCount = 0;
-            
-            while (processedCount < ipList.Count)
-            {
-                var chunk = ipList.Skip(processedCount).Take(BatchSize).ToList();
-                _logger.LogInformation("Job {Id}: Processing chunk starting at index {Start} with {ChunkSize} IPs.", jobState.BatchId, processedCount, chunk.Count);
 
-                var processingTasks = chunk.Select(ip => ProcessSingleIpAsync(ip)).ToList();
+            var chunks = ipList.Chunk(BatchServiceConstants.BATCH_SIZE);
+
+            foreach (var chunk in chunks)
+            {
+                _logger.LogInformation(
+                    "Job {Id}: Processing chunk with {ChunkSize} IPs.",
+                    jobState.BatchId,
+                    chunk.Length
+                );
+
+                var processingTasks = chunk.Select(ip => ProcessSingleIpAsync(ip, cancellationToken));
                 var results = await Task.WhenAll(processingTasks);
                 
-                lock (jobState) 
-                {
-                    var successfulResults = results.Where(r => r != null).ToList();
-                    jobState.Results.AddRange(successfulResults!);
-                    jobState.ProcessedIps += chunk.Count; 
-                }
+                var successfulResults = results.Where(r => r != null);
+                jobState.Results.AddRange(successfulResults!);
+                jobState.ProcessedIps += chunk.Length;
                 
-                processedCount += chunk.Count;
             }
-
-            jobState.Status = "Completed";
+            
+            jobState.Status = BatchJobStatus.Completed;
             _logger.LogInformation("Job {Id} completed. Successful lookups: {SuccessCount}.", jobState.BatchId, jobState.Results.Count);
         }
         catch (Exception ex)
         {
-            jobState.Status = "Failed";
+            jobState.Status = BatchJobStatus.Failed;
             _logger.LogError(ex, "Job {Id} failed during execution.", jobState.BatchId);
         }
     }
 
-    private async Task<IpDetails?> ProcessSingleIpAsync(string ipAddress)
+    private async Task<IpDetails?> ProcessSingleIpAsync(string ipAddress, CancellationToken cancellationToken)
     {
         try
         {
-            IpDetails? details = await _cacheClient.GetDetailsAsync(ipAddress);
-
-            if (details != null)
-            {
-                _logger.LogDebug("Cache HIT for IP: {Ip}.", ipAddress);
-                return details;
-            }
-
-            _logger.LogDebug("Cache MISS for IP: {Ip}. Initiating live lookup.", ipAddress);
+            _logger.LogDebug("Cache MISS for IP. Initiating live lookup.");
             
-            details = await _lookupClient.GetDetailsAsync(ipAddress);
-            
-            if (details == null) 
-            {
-                throw new InvalidOperationException($"IP Lookup Service returned empty or invalid details for {ipAddress}.");
-            }
+            IpDetails? details = await _lookupClient.GetDetailsAsync(ipAddress);
 
-            try
+            if (details == null)
             {
-                await _cacheClient.SetDetailsAsync(details);
-                _logger.LogDebug("IP: {Ip} successfully cached after live lookup.", ipAddress);
-            }
-            catch (Exception cacheEx)
-            {
-                _logger.LogWarning(cacheEx, "Non-critical: Failed to cache details for IP: {Ip}.", ipAddress);
+                throw new BadRequestException("IP Lookup Service returned empty or invalid details.");
             }
 
             return details;
         }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogError(ex, "FATAL ERROR during processing IP: {Ip}. Skipping this IP.", ipAddress);
-            return null; 
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "CRITICAL UNHANDLED ERROR processing IP: {Ip}.", ipAddress);
-            return null;
+            _logger.LogError(ex, "CRITICAL UNHANDLED ERROR processing IP.");
+            return new IpDetails();
         }
     }
 }
